@@ -74,7 +74,10 @@
         "strstream": "cpp",
         "charconv": "cpp",
         "shared_mutex": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "any": "cpp",
+        "core": "cpp",
+        "sparsecore": "cpp"
     },
     "cmake.sourceDirectory": "/home/mishanote_2/pouk/migrated_ws/src/Stage/worlds"
 }

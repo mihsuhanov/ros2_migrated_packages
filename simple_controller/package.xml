@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <package>
-  <name>simple_planner</name>
+  <name>simple_controller</name>
   <version>0.0.0</version>
-  <description>The simple stage planner package</description>
-  <maintainer email="aminin@todo.todo">aminin</maintainer>
+  <description>The simple_controller package</description>
 
+  <maintainer email="aminin@todo.todo">aminin</maintainer>
   <license>TODO</license>
 
   <buildtool_depend>colcon</buildtool_depend>
@@ -12,11 +12,13 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
+  <build_depend>angles</build_depend>
   <build_depend>tf2</build_depend>
   <run_depend>rclcpp</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
+  <run_depend>angles</run_depend>
   <run_depend>tf2</run_depend>
 
 <export>
