@@ -37,7 +37,7 @@ def generate_launch_description():
             ]
         ),
         ExecuteProcess(
-            cmd=['ros2', 'topic', 'pub', '/robot/velocity', 'std_msgs/Float32', 'data: 2.0']
+            cmd=['ros2', 'topic', 'pub', '/velocity', 'std_msgs/Float32', 'data: 2.0']
         ),
         launch_ros.actions.Node(
             package='feature_matcher',

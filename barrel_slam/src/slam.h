@@ -8,6 +8,7 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 
 const std::size_t ROBOT_STATE_SIZE = 3;
 const std::size_t NUMBER_LANDMARKS = 12;
@@ -22,6 +23,9 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
   // публикатор положений маяков
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr landmark_pub[NUMBER_LANDMARKS];
+  
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr grid_pub_;
+  
   void on_odo(const nav_msgs::msg::Odometry& odom);
   void on_scan(const sensor_msgs::msg::LaserScan& scan);
   void publish_results(const std::string& frame, const rclcpp::Time& time);
@@ -36,6 +40,11 @@ private:
   void correct(int landmarkIndex, int measurementIndex);
   // публикуем результаты
   void publish_transform(const std_msgs::msg::Header& scan_header);
+
+  void update_occupancy_grid(const sensor_msgs::msg::LaserScan& scan);
+  int world_to_grid_x(double x);
+  int world_to_grid_y(double y);
+
   double v = 0;
   double w = 0;
 
@@ -67,6 +76,11 @@ private:
   const std::string map_frame;
 
   double feature_rad;
+
+  nav_msgs::msg::OccupancyGrid occupancy_grid_;
+  double grid_resolution_;  // meters per cell
+  int grid_width_;         // cells
+  int grid_height_;        // cells
 
 public:
   Slam();

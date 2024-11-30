@@ -166,7 +166,7 @@ bool Planner::update_static_map()
   while(!map_server_client_->wait_for_service(1s)) {
     RCLCPP_INFO(this->get_logger(), "Wait map server");
   }
-  RCLCPP_INFO(this->get_logger(), "Service connected");
+  RCLCPP_INFO(this->get_logger(), "Hello");
 
   auto srv_future = map_server_client_->async_send_request(std::make_shared<nav_msgs::srv::GetMap::Request>());
   auto status = srv_future.wait_for(5s);

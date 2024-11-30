@@ -107,7 +107,7 @@ int Slam::associate_measurement(const Eigen::Vector2d& landmark_measuriment)
     }
   }
   // naive association
-  const double kAssocThreshold = 5.0;
+  const double kAssocThreshold = 10.0;
   if (nearest_index >= 0 && nearest_distance < kAssocThreshold)
   {
     return nearest_index;
@@ -252,25 +252,73 @@ void Slam::on_scan(const sensor_msgs::msg::LaserScan& scan)
         }
     }
   }
+  
+  update_occupancy_grid(scan);
+  
   publish_results("map", scan.header.stamp);
   publish_transform(scan.header);
 }
 
-// void fill_pose_msg(geometry_msgs::msg::PoseWithCovariance& pose,
-//                    double x, double y, double fi,
-//                    const Eigen::Matrix2d& cov_matr)
-// {
-//   pose.covariance.assign(0);
-//   pose.covariance[0] = cov_matr(0,0); pose.covariance[1] = cov_matr(0,1);
-//   pose.covariance[6] = cov_matr(1,0); pose.covariance[7] = cov_matr(1,1);
-//   pose.pose.position.x = x;
-//   pose.pose.position.y = y;
-//   pose.pose.position.z = 0;
-//   pose.pose.orientation.x = 0;
-//   pose.pose.orientation.y = 0;
-//   pose.pose.orientation.w = cos(fi/2);
-//   pose.pose.orientation.z = sin(fi/2);
-// }
+void Slam::update_occupancy_grid(const sensor_msgs::msg::LaserScan& scan)
+{
+    double robot_x = X(0);
+    double robot_y = X(1);
+    double robot_theta = X(2);
+    for (size_t i = 0; i < scan.ranges.size(); ++i) {
+        if (scan.ranges[i] >= scan.range_max) continue;
+
+        double angle = scan.angle_min + i * scan.angle_increment + robot_theta;
+        double point_x = robot_x + scan.ranges[i] * cos(angle);
+        double point_y = robot_y + scan.ranges[i] * sin(angle);
+
+        int grid_x = world_to_grid_x(point_x);
+        int grid_y = world_to_grid_y(point_y);
+
+        if (grid_x >= 0 && grid_x < grid_width_ && 
+            grid_y >= 0 && grid_y < grid_height_) {
+            occupancy_grid_.data[grid_y * grid_width_ + grid_x] = 100;
+            int robot_grid_x = world_to_grid_x(robot_x);
+            int robot_grid_y = world_to_grid_y(robot_y);
+
+            int dx = abs(grid_x - robot_grid_x);
+            int dy = abs(grid_y - robot_grid_y);
+            int sx = robot_grid_x < grid_x ? 1 : -1;
+            int sy = robot_grid_y < grid_y ? 1 : -1;
+            int err = dx - dy;
+
+            int x = robot_grid_x;
+            int y = robot_grid_y;
+
+            while (x != grid_x || y != grid_y) {
+                if (x >= 0 && x < grid_width_ && y >= 0 && y < grid_height_) {
+                    occupancy_grid_.data[y * grid_width_ + x] = 0;
+                }
+                int e2 = 2 * err;
+                if (e2 > -dy) {
+                    err -= dy;
+                    x += sx;
+                }
+                if (e2 < dx) {
+                    err += dx;
+                    y += sy;
+                }
+            }
+        }
+    }
+    occupancy_grid_.header.stamp = scan.header.stamp;
+    grid_pub_->publish(occupancy_grid_);
+}
+
+int Slam::world_to_grid_x(double x)
+{
+    return static_cast<int>((x + grid_width_ * grid_resolution_ / 2.0) / grid_resolution_);
+}
+
+int Slam::world_to_grid_y(double y)
+{
+    return static_cast<int>((y + grid_height_ * grid_resolution_ / 2.0) / grid_resolution_);
+}
+
 
 void fill_pose_msg(geometry_msgs::msg::Pose& pose,
                    double x, double y, double fi)
@@ -386,7 +434,10 @@ Slam::Slam():
     A(Eigen::Matrix3d::Identity()),
     P(Eigen::MatrixXd::Zero(X.size(), X.size())),
     map_frame(this->declare_parameter<std::string>("map_frame", "map")),
-    feature_rad(this->declare_parameter<double>("feature_radius", 2.0))
+    feature_rad(this->declare_parameter<double>("feature_radius", 2.0)),
+    grid_resolution_(this->declare_parameter<double>("grid_resolution", 0.5)),
+    grid_width_(this->declare_parameter<int>("grid_width", 500)),
+    grid_height_(this->declare_parameter<int>("grid_height", 500))
 {
 
   odo_sub_ = this->create_subscription<nav_msgs::msg::Odometry>("/odom", 1, std::bind(&Slam::on_odo, this, std::placeholders::_1));
@@ -412,4 +463,14 @@ Slam::Slam():
   tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
   last_time = this->get_clock()->now();
+
+  grid_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("occupancy_grid", 1);
+  occupancy_grid_.header.frame_id = map_frame;
+  occupancy_grid_.info.resolution = grid_resolution_;
+  occupancy_grid_.info.width = grid_width_;
+  occupancy_grid_.info.height = grid_height_;
+  occupancy_grid_.info.origin.position.x = -grid_width_ * grid_resolution_ / 2.0;
+  occupancy_grid_.info.origin.position.y = -grid_height_ * grid_resolution_ / 2.0;
+  occupancy_grid_.info.origin.orientation.w = 1.0;
+  occupancy_grid_.data.resize(grid_width_ * grid_height_, -1);
 }
